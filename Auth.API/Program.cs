@@ -6,28 +6,26 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// 1) Controller Desteği
 builder.Services.AddControllers();
 
-// EF Core için
+// 2) EF Core Ayarları (MySQL)
 builder.Services.AddDbContext<AuthDbContext>(options =>
 {
+    // "DefaultConnection" -> appsettings.json içindeki ConnectionStrings alanına bakar
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
     );
 });
 
-// JWT için
+// 3) JWT Ayarlarını appsettings.json'dan Okuma
 var key = builder.Configuration["Jwt:Key"];
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
 
-builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
+// 4) Authentication & JWT Bearer
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.RequireHttpsMetadata = false;
@@ -44,15 +42,19 @@ builder.Services.AddAuthentication(options =>
         };
     });
 
+// 5) Authorization
 builder.Services.AddAuthorization();
 
+// Uygulama oluşturuluyor
 var app = builder.Build();
 
-// Middleware pipeline
+// 6) Middleware Pipeline
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// 7) Controller'ları Yönlendirme
 app.MapControllers();
 
+// 8) Uygulamayı Çalıştır
 app.Run();
