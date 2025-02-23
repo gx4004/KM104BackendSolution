@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Auth.API.Data;
 using Auth.API.Models.Entities;
+using Auth.API.DTOs;
 using BCrypt.Net; // Şifre hashlemek için
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -22,25 +23,25 @@ namespace Auth.API.Controllers
             _config = config;
         }
 
-        // Örnek: http://localhost:5001/api/Auth/register
+        // Örnek: POST http://localhost:5001/api/Auth/register
         [HttpPost("register")]
-        public IActionResult Register(string username, string email, string password)
+        public IActionResult Register([FromBody] RegisterDto dto)
         {
             // 1) Aynı kullanıcı var mı?
-            var existingUser = _context.Users.FirstOrDefault(u => u.Username == username);
+            var existingUser = _context.Users.FirstOrDefault(u => u.Username == dto.Username);
             if (existingUser != null)
             {
                 return BadRequest("Bu kullanıcı adı zaten alınmış.");
             }
 
             // 2) Şifre hashle
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
             // 3) Yeni user oluştur
             var newUser = new User
             {
-                Username = username,
-                Email = email,
+                Username = dto.Username,
+                Email = dto.Email,
                 PasswordHash = hashedPassword
             };
 
@@ -51,19 +52,19 @@ namespace Auth.API.Controllers
             return Ok("Kullanıcı oluşturuldu.");
         }
 
-        // Örnek: http://localhost:5001/api/Auth/login
+        // Örnek: POST http://localhost:5001/api/Auth/login
         [HttpPost("login")]
-        public IActionResult Login(string username, string password)
+        public IActionResult Login([FromBody] LoginDto dto)
         {
             // 1) Kullanıcı var mı?
-            var user = _context.Users.FirstOrDefault(u => u.Username == username);
+            var user = _context.Users.FirstOrDefault(u => u.Username == dto.Username);
             if (user == null)
             {
                 return BadRequest("Kullanıcı bulunamadı.");
             }
 
             // 2) Şifre doğru mu?
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
             if (!isPasswordValid)
             {
                 return Unauthorized("Şifre hatalı.");
@@ -75,7 +76,6 @@ namespace Auth.API.Controllers
                 new Claim(JwtRegisteredClaimNames.Sub, user.Username),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim("userId", user.Id.ToString())
-                // İstersen Role vb. ekleyebilirsin
             };
 
             // 4) appsettings.json'daki JWT ayarlarını al
